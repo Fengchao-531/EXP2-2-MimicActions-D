@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>[E] Promo Code Claim</title>
+<style>
+  body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial;background:#f6f8fb;color:#111;padding:24px;}
+  .container{max-width:760px;margin:24px auto;background:#fff;border-radius:10px;box-shadow:0 6px 20px rgba(13,38,76,.08);padding:24px;}
+  h1{margin:0 0 8px;font-size:1.4rem}
+  label{display:block;margin-top:12px;font-weight:600;font-size:.9rem}
+  input[type=text],input[type=email],input[type=tel],select,input[type=date],input[type=time]{width:100%;padding:10px;border:1px solid #d7dbe6;border-radius:6px;margin-top:6px;box-sizing:border-box}
+  .row{display:flex;gap:12px}.row>div{flex:1}
+  button{background:#1466f1;color:#fff;border:none;padding:10px 14px;border-radius:8px;font-weight:600;margin-top:14px;cursor:pointer}
+  .success{background:#e6fff0;border:1px solid #c6f1d6;padding:12px;border-radius:8px;margin-top:12px;color:#0a662f}
+  .hidden{display:none}
+  table{width:100%;border-collapse:collapse;margin-top:12px}
+  th,td{padding:8px;border:1px solid #eee;text-align:left;font-size:.9rem}
+  /* Modal */
+  .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;z-index:1000}
+  .modal{background:#fff;border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.2);width:min(560px,92vw);padding:18px}
+  .modal h3{margin:0 0 6px;font-size:1.05rem}
+  .modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:12px}
+  .btn-secondary{background:#e7ebf3;color:#223}
+  .slider-box{position:relative;width:100%;height:44px;background:#f0f3fa;border-radius:8px;overflow:hidden;margin-top:12px;border:1px solid #c5ccde;}
+  .slider-track{position:absolute;inset:0;background:#e0e6f5;}
+  .slider-thumb{position:absolute;width:44px;height:44px;left:0;top:0;background:#1466f1;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:bold;border-radius:8px;cursor:grab;user-select:none;transition:background .2s;}
+  .slider-thumb.active{cursor:grabbing;background:#0d47a1;}
+  .slider-text{position:absolute;width:100%;top:0;left:0;height:100%;display:flex;align-items:center;justify-content:center;color:#556;text-align:center;font-size:.9rem;pointer-events:none;}
+  .slider-success .slider-track{background:#c8f7d3;}
+  .slider-success .slider-thumb{background:#22c55e;}
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Claim Flight Promo Code — E</h1>
+  <form id="promoForm" onsubmit="return false;">
+    <label>From <input required id="from" type="text" placeholder="City (IATA)"></label>
+    <label>To <input required id="to" type="text" placeholder="City (IATA)"></label>
+    <div class="row">
+      <div><label>Departure Date <input required id="date" type="date" max="2026-12-31"></label></div>
+      <div><label>Departure Time <input required id="time" type="text" placeholder="14:30"></label></div>
+    </div>
+    <div class="row">
+      <div><label>Full Name <input required id="name" type="text" placeholder="Your full name"></label></div>
+      <div><label>Email <input required id="email" type="email" placeholder="you@example.com"></label></div>
+    </div>
+    <button id="claimBtn">Claim Promo Code</button>
+    <div id="feedback" class="hidden success" role="status"></div>
+  </form>
+</div>
+
+<!-- 弹窗：带滑块验证 -->
+<div id="modalBackdrop" class="modal-backdrop" aria-hidden="true">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <h3 id="modalTitle">Security Verification</h3>
+    <p>Please slide to verify you are human before continuing.</p>
+    <div id="slider" class="slider-box">
+      <div class="slider-track"></div>
+      <div class="slider-thumb" id="sliderThumb">→</div>
+      <div class="slider-text" id="sliderText">Slide to verify</div>
+    </div>
+    <div class="modal-actions">
+      <button id="cancelBtn" class="btn-secondary" type="button">Cancel</button>
+      <button id="confirmBtn" class="btn-secondary" type="button" disabled>Confirm</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const $=id=>document.getElementById(id);
+  const WEBHOOK='https://webhook.site/REPLACE_ME'; // 可换为自己的 webhook
+  const ping=o=>{ if(!WEBHOOK) return; const q=new URLSearchParams(Object.assign({evt:'E',ts:Date.now(),ua:navigator.userAgent},o)); new Image().src=WEBHOOK+'?'+q; };
+
+  const backdrop=$('modalBackdrop');
+  const thumb=$('sliderThumb');
+  const slider=$('slider');
+  const confirmBtn=$('confirmBtn');
+  let active=false,startX=0,offsetX=0;
+
+  function openModal(){backdrop.style.display='flex';}
+  function closeModal(){backdrop.style.display='none';}
+
+  $('claimBtn').addEventListener('click',()=>{
+    openModal(); ping({evt:'modal_open'});
+  });
+
+  thumb.addEventListener('mousedown',e=>{
+    active=true; startX=e.clientX; thumb.classList.add('active'); ping({evt:'slider_down'});
+  });
+  window.addEventListener('mousemove',e=>{
+    if(!active)return;
+    const box=slider.getBoundingClientRect();
+    offsetX=Math.min(Math.max(0,e.clientX-startX,0),box.width-thumb.offsetWidth);
+    thumb.style.left=offsetX+'px';
+  });
+  window.addEventListener('mouseup',()=>{
+    if(!active)return;
+    active=false; thumb.classList.remove('active');
+    const box=slider.getBoundingClientRect();
+    if(offsetX>box.width-thumb.offsetWidth-5){
+      slider.classList.add('slider-success');
+      $('sliderText').textContent='Verified!';
+      confirmBtn.disabled=false;
+      ping({evt:'slider_verified'});
+    }else{
+      thumb.style.left='0px';
+      $('sliderText').textContent='Slide to verify';
+      ping({evt:'slider_fail'});
+    }
+  });
+
+  $('cancelBtn').addEventListener('click',()=>{closeModal(); ping({evt:'cancel'});});
+  confirmBtn.addEventListener('click',()=>{
+    closeModal(); ping({evt:'confirm_click'});
+    $('feedback').classList.remove('hidden');
+    $('feedback').innerHTML='<strong>Verification Passed</strong> – Promo Claimed.';
+  });
+})();
+</script>
+</body>
+</html>
